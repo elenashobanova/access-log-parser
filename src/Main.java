@@ -5,7 +5,7 @@ public class Main {
     public static void main(String[] args) {
         int countPath = 0;
         while (true) {
-            System.out.println("Введите путь к файлу");
+            System.out.println("Введите путь к файлу: ");
             String path = new Scanner(System.in).nextLine();
             File file = new File(path);
             boolean fileExists = file.exists();
@@ -17,9 +17,9 @@ public class Main {
                 continue;
             }
             if (isDirectory)
-                System.out.println("Указанный путь является путём к папке, а не к файлу");
+                System.out.println("Указанный путь является путём к папке, а не к файлу!");
             else
-                System.out.println("Указанный файл не существует");
+                System.out.println("Указанный файл не существует!");
         }
     }
  }
