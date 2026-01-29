@@ -16,10 +16,9 @@ public class Line {
                 (end.y - start.y) * (end.y - start.y));
         return l;
     }
-
-    @Override
     public String toString() {
         String res = "Линия от " + start + " до " + end;
         return res;
     }
+
 }
