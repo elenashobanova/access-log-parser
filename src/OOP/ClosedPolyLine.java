@@ -6,8 +6,8 @@ public class ClosedPolyLine extends PolyLine{
     }
 
     @Override
-    public double getLength() {
-        double baseLenght = super.getLength();
+    public double getLenght() {
+        double baseLenght = super.getLenght();
         //return baseLenght;
         Point[] pnts = getPoints();
         Point first = pnts[0];

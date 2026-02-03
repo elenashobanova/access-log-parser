@@ -1,6 +1,9 @@
 package OOP;
 
-public class Line {
+//interface Measurable {
+ //   double getLenght();
+//}
+class Line implements Main.Measurable {
     private Point start;
     private Point end;
     public Line(Point start, Point end) {
