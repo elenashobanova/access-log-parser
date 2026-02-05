@@ -1,13 +1,11 @@
 package main;
 
-import java.awt.*;
-
-public class PointsObj extends Object
+public class Point extends Object
 {
     private int x;
     private int y;
 
-    public PointsObj(int x, int y) {
+    public Point(int x, int y) {
         this.y = y;
         this.x = x;
     }
@@ -36,7 +34,7 @@ public class PointsObj extends Object
     }
     @Override
     public boolean equals(Object obj) {
-        PointsObj obj2 = (PointsObj) obj;
+        Point obj2 = (Point) obj;
         return this.x == obj2.x && this.y == obj2.y;
     }
 
@@ -46,7 +44,7 @@ public class PointsObj extends Object
     }
 
     @Override
-    protected PointsObj clone() throws CloneNotSupportedException {
-        return new PointsObj(this.x, this.y);
+    protected Point clone() throws CloneNotSupportedException {
+        return new Point(this.x, this.y);
     }
 }
