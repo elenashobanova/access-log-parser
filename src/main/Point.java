@@ -2,8 +2,8 @@ package main;
 
 public class Point extends Object
 {
-    private int x;
-    private int y;
+    int x;
+    int y;
 
     public Point(int x, int y) {
         this.y = y;
