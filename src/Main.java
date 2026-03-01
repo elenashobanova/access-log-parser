@@ -1,5 +1,7 @@
 import java.io.*;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 class LongLineException extends RuntimeException {
     public LongLineException(String message) {
@@ -30,9 +32,13 @@ public class Main {
                     BufferedReader reader = new BufferedReader(fileReader);
 
                     String line;
-                    int lineCount = 0;
-                    int maxLength = Integer.MIN_VALUE;
-                    int minLength = Integer.MAX_VALUE;
+                    int totalRequests = 0;
+                    int googlebotRequests = 0;
+                    int yandexbotRequests = 0;
+
+                    // Регулярное выражение для разбора строки лога
+                    Pattern logPattern = Pattern.compile(
+                            ("^(\\S+)\\s+(-|\\S+)\\s+(-|\\S+)\\s+\\[([^]]+)\\]\\s+\"(\\S+)\s+([^\"]+)\"\\s+(\\d+)\\s+(\\d+|-)\\s+\"([^\"]*)\"\\s+\"([^\"]*)\"$"));
 
                     while ((line = reader.readLine()) != null) {
                         int length = line.length();
@@ -44,18 +50,41 @@ public class Main {
                                     " символов (превышает лимит 1024).");
                         }
 
-                        lineCount++;
-                        maxLength = Math.max(maxLength, length);
-                        minLength = Math.min(minLength, length);
+                        totalRequests++;
+
+                        Matcher matcher = logPattern.matcher(line);
+                        if (matcher.matches()) {
+                            // Извлекаем User-Agent (последняя группа в регулярном выражении)
+                            String userAgent = matcher.group(10);
+
+                            // Обрабатываем User-Agent для определения бота
+                            String program = extractProgramFromUserAgent(userAgent);
+
+                            if ("Googlebot".equals(program)) {
+                                googlebotRequests++;
+                            } else if ("YandexBot".equals(program)) {
+                                yandexbotRequests++;
+                            }
+                        }
                     }
 
                     reader.close();
 
                     // Выводим результаты
-                    System.out.println("\n--- Результаты анализа файла ---");
-                    System.out.println("Общее количество строк в файле: " + lineCount);
-                    System.out.println("Длина самой длинной строки: " + maxLength);
-                    System.out.println("Длина самой короткой строки: " + (minLength == Integer.MAX_VALUE ? 0 : minLength));
+                    System.out.println("\n--- Результаты анализа запросов ---");
+                    System.out.println("Общее количество запросов: " + totalRequests);
+
+                    if (totalRequests > 0) {
+                        double googlebotShare = (double) googlebotRequests / totalRequests * 100;
+                        double yandexbotShare = (double) yandexbotRequests / totalRequests * 100;
+
+                        System.out.printf("Доля запросов от Googlebot: %.2f%% (%d запросов)%n",
+                                googlebotShare, googlebotRequests);
+                        System.out.printf("Доля запросов от YandexBot: %.2f%% (%d запросов)%n",
+                                yandexbotShare, yandexbotRequests);
+                    } else {
+                        System.out.println("Файл не содержит запросов для анализа.");
+                    }
                     System.out.println("--------------------------------");
 
                 } catch (FileNotFoundException e) {
@@ -78,6 +107,41 @@ public class Main {
                 }
             }
         }
+    }
+
+    /**
+     * Извлекает название программы из User-Agent согласно заданным правилам
+     * @param userAgent строка User-Agent
+     * @return название программы (например, "Googlebot", "YandexBot") или null, если не найдено
+     */
+    private static String extractProgramFromUserAgent(String userAgent) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return null;
+        }
+
+        // Ищем содержимое первых скобок
+        int start = userAgent.indexOf('(');
+        int end = userAgent.indexOf(')', start + 1);
+
+        if (start == -1 || end == -1) {
+            return null;
+        }
+
+        String firstBrackets = userAgent.substring(start + 1, end);
+        String[] parts = firstBrackets.split(";");
+
+        if (parts.length >= 2) {
+            String fragment = parts[1].trim();
+            // Отделяем часть до слэша
+            int slashIndex = fragment.indexOf('/');
+            if (slashIndex != -1) {
+                return fragment.substring(0, slashIndex);
+            } else {
+                return fragment;
+            }
+        }
+
+        return null;
     }
 }
 
