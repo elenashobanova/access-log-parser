@@ -1,147 +1,72 @@
+import main.LogEntry;
+import main.Statistics;
+import main.UserAgent;
+
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class LongLineException extends RuntimeException {
-    public LongLineException(String message) {
-        super(message);
-    }
-}
 
 public class Main {
     public static void main(String[] args) {
-        int countPath = 0;
-        Scanner scanner = new Scanner(System.in);
+        Statistics stats = new Statistics();
+        List<LogEntry> logEntries = new ArrayList<>();
 
-        while (true) {
-            System.out.println("Введите путь к файлу: ");
-            String path = scanner.nextLine();
-            File file = new File(path);
-            boolean fileExists = file.exists();
-            boolean isDirectory = file.isDirectory();
+        // Пример строк лога для тестирования
+        String[] logLines = {
+                "192.168.1.100 - - [24/Oct/2023:14:20:15 +0000] \"POST /api/data\" 201 1250 \"\" \"Mozilla/5.0 (macOS; Intel Mac OS X 10_15_7) Firefox/119.0\"",
+                "88.12.45.77 - - [24/Oct/2023:15:30:45 +0000] \"GET /about.html\" 200 3200 \"https://example.com\" \"Mozilla/5.0 (Linux; Android 10) Opera/72.0\"",
+                "203.0.113.1 - - [24/Oct/2023:16:10:30 +0000] \"GET /contact.html\" 404 512 \"\" \"Googlebot/2.1 (+http://www.google.com/bot.html)\""
+        };
 
-            if (fileExists && !isDirectory) {
-                countPath++;
-                System.out.println("Путь указан верно");
-                System.out.println("Это файл номер " + countPath);
+        System.out.println("=== Анализ лог‑файла ===");
 
-                // Читаем файл и обрабатываем данные
-                try {
-                    FileReader fileReader = new FileReader(path);
-                    BufferedReader reader = new BufferedReader(fileReader);
+        try {
+            // Создаём объекты LogEntry из строк лога
+            for (String logLine : logLines) {
+                LogEntry entry = new LogEntry(logLine);
+                logEntries.add(entry);
 
-                    String line;
-                    int totalRequests = 0;
-                    int googlebotRequests = 0;
-                    int yandexbotRequests = 0;
+                // Добавляем запись в статистику
+                stats.addEntry(entry);
 
-                    // Регулярное выражение для разбора строки лога
-                    Pattern logPattern = Pattern.compile(
-                            ("^(\\S+)\\s+(-|\\S+)\\s+(-|\\S+)\\s+\\[([^]]+)\\]\\s+\"(\\S+)\s+([^\"]+)\"\\s+(\\d+)\\s+(\\d+|-)\\s+\"([^\"]*)\"\\s+\"([^\"]*)\"$"));
+                // Выводим информацию о каждой записи
+                System.out.printf("IP: %s, Время: %s, Метод: %s, Путь: %s%n",
+                        entry.getIpAddress(),
+                        entry.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss")),
+                        entry.getHttpMethod(),
+                        entry.getRequestPath());
 
-                    while ((line = reader.readLine()) != null) {
-                        int length = line.length();
-
-                        // Проверяем, не превышает ли длина строки 1024 символа
-                        if (length > 1024) {
-                            reader.close();
-                            throw new LongLineException("Обнаружена строка длиной " + length +
-                                    " символов (превышает лимит 1024).");
-                        }
-
-                        totalRequests++;
-
-                        Matcher matcher = logPattern.matcher(line);
-                        if (matcher.matches()) {
-                            // Извлекаем User-Agent (последняя группа в регулярном выражении)
-                            String userAgent = matcher.group(10);
-
-                            // Обрабатываем User-Agent для определения бота
-                            String program = extractProgramFromUserAgent(userAgent);
-
-                            if ("Googlebot".equals(program)) {
-                                googlebotRequests++;
-                            } else if ("YandexBot".equals(program)) {
-                                yandexbotRequests++;
-                            }
-                        }
-                    }
-
-                    reader.close();
-
-                    // Выводим результаты
-                    System.out.println("\n--- Результаты анализа запросов ---");
-                    System.out.println("Общее количество запросов: " + totalRequests);
-
-                    if (totalRequests > 0) {
-                        double googlebotShare = (double) googlebotRequests / totalRequests * 100;
-                        double yandexbotShare = (double) yandexbotRequests / totalRequests * 100;
-
-                        System.out.printf("Доля запросов от Googlebot: %.2f%% (%d запросов)%n",
-                                googlebotShare, googlebotRequests);
-                        System.out.printf("Доля запросов от YandexBot: %.2f%% (%d запросов)%n",
-                                yandexbotShare, yandexbotRequests);
-                    } else {
-                        System.out.println("Файл не содержит запросов для анализа.");
-                    }
-                    System.out.println("--------------------------------");
-
-                } catch (FileNotFoundException e) {
-                    System.err.println("Файл не найден: " + e.getMessage());
-                } catch (IOException e) {
-                    System.err.println("Ошибка ввода‑вывода при чтении файла: " + e.getMessage());
-                } catch (LongLineException e) {
-                    System.err.println("Ошибка: " + e.getMessage());
-                    break; // Прекращаем выполнение программы при обнаружении длинной строки
-                } catch (Exception e) {
-                    System.err.println("Неожиданная ошибка: ");
-                    e.printStackTrace();
-                }
-
-            } else {
-                if (isDirectory) {
-                    System.out.println("Указанный путь является путём к папке, а не к файлу!");
-                } else {
-                    System.out.println("Указанный файл не существует!");
-                }
+                UserAgent userAgent = entry.getUserAgent();
+                System.out.printf("  OS: %s, Браузер: %s, Размер: %d байт%n",
+                        userAgent.getOsType(),
+                        userAgent.getBrowserType(),
+                        entry.getDataSize());
+                System.out.println();
             }
-        }
-    }
 
-    /**
-     * Извлекает название программы из User-Agent согласно заданным правилам
-     * @param userAgent строка User-Agent
-     * @return название программы (например, "Googlebot", "YandexBot") или null, если не найдено
-     */
-    private static String extractProgramFromUserAgent(String userAgent) {
-        if (userAgent == null || userAgent.isEmpty()) {
-            return null;
-        }
+            // Выводим итоговую статистику
+            System.out.println("=== Итоговая статистика ===");
+            System.out.printf("Общее количество записей: %d%n", logEntries.size());
+            System.out.printf("Общий объём трафика: %d байт%n", stats.totalTraffic);
 
-        // Ищем содержимое первых скобок
-        int start = userAgent.indexOf('(');
-        int end = userAgent.indexOf(')', start + 1);
+            if (stats.minTime != null && stats.maxTime != null) {
+                System.out.printf("Период анализа: с %s до %s%n",
+                        stats.minTime.format(java.time.format.DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm")),
+                        stats.maxTime.format(java.time.format.DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm")));
 
-        if (start == -1 || end == -1) {
-            return null;
-        }
-
-        String firstBrackets = userAgent.substring(start + 1, end);
-        String[] parts = firstBrackets.split(";");
-
-        if (parts.length >= 2) {
-            String fragment = parts[1].trim();
-            // Отделяем часть до слэша
-            int slashIndex = fragment.indexOf('/');
-            if (slashIndex != -1) {
-                return fragment.substring(0, slashIndex);
+                double trafficRate = stats.getTrafficRate();
+                System.out.printf("Средний трафик за час: %.2f байт/час%n", trafficRate);
             } else {
-                return fragment;
+                System.out.println("Недостаточно данных для расчёта трафика.");
             }
-        }
 
-        return null;
+        } catch (IllegalArgumentException e) {
+            System.err.println("Ошибка при обработке лога: " + e.getMessage());
+        }
     }
 }
 
