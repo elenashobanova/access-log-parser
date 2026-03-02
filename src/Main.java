@@ -1,82 +1,71 @@
-import java.io.*;
-import java.util.Scanner;
+import main.LogEntry;
+import main.Statistics;
+import main.UserAgent;
 
-class LongLineException extends RuntimeException {
-    public LongLineException(String message) {
-        super(message);
-    }
-}
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 public class Main {
     public static void main(String[] args) {
-        int countPath = 0;
-        Scanner scanner = new Scanner(System.in);
+        Statistics stats = new Statistics();
+        List<LogEntry> logEntries = new ArrayList<>();
 
-        while (true) {
-            System.out.println("Введите путь к файлу: ");
-            String path = scanner.nextLine();
-            File file = new File(path);
-            boolean fileExists = file.exists();
-            boolean isDirectory = file.isDirectory();
+        // Пример строк лога для тестирования
+        String[] logLines = {
+                "192.168.1.100 - - [24/Oct/2023:14:20:15 +0000] \"POST /api/data\" 201 1250 \"\" \"Mozilla/5.0 (macOS; Intel Mac OS X 10_15_7) Firefox/119.0\"",
+                "88.12.45.77 - - [24/Oct/2023:15:30:45 +0000] \"GET /about.html\" 200 3200 \"https://example.com\" \"Mozilla/5.0 (Linux; Android 10) Opera/72.0\"",
+                "203.0.113.1 - - [24/Oct/2023:16:10:30 +0000] \"GET /contact.html\" 404 512 \"\" \"Googlebot/2.1 (+http://www.google.com/bot.html)\""
+        };
 
-            if (fileExists && !isDirectory) {
-                countPath++;
-                System.out.println("Путь указан верно");
-                System.out.println("Это файл номер " + countPath);
+        System.out.println("=== Анализ лог‑файла ===");
 
-                // Читаем файл и обрабатываем данные
-                try {
-                    FileReader fileReader = new FileReader(path);
-                    BufferedReader reader = new BufferedReader(fileReader);
+        try {
+            // Создаём объекты LogEntry из строк лога
+            for (String logLine : logLines) {
+                LogEntry entry = new LogEntry(logLine);
+                logEntries.add(entry);
 
-                    String line;
-                    int lineCount = 0;
-                    int maxLength = Integer.MIN_VALUE;
-                    int minLength = Integer.MAX_VALUE;
+                // Добавляем запись в статистику
+                stats.addEntry(entry);
 
-                    while ((line = reader.readLine()) != null) {
-                        int length = line.length();
+                // Выводим информацию о каждой записи
+                System.out.printf("IP: %s, Время: %s, Метод: %s, Путь: %s%n",
+                        entry.getIpAddress(),
+                        entry.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm:ss")),
+                        entry.getHttpMethod(),
+                        entry.getRequestPath());
 
-                        // Проверяем, не превышает ли длина строки 1024 символа
-                        if (length > 1024) {
-                            reader.close();
-                            throw new LongLineException("Обнаружена строка длиной " + length +
-                                    " символов (превышает лимит 1024).");
-                        }
-
-                        lineCount++;
-                        maxLength = Math.max(maxLength, length);
-                        minLength = Math.min(minLength, length);
-                    }
-
-                    reader.close();
-
-                    // Выводим результаты
-                    System.out.println("\n--- Результаты анализа файла ---");
-                    System.out.println("Общее количество строк в файле: " + lineCount);
-                    System.out.println("Длина самой длинной строки: " + maxLength);
-                    System.out.println("Длина самой короткой строки: " + (minLength == Integer.MAX_VALUE ? 0 : minLength));
-                    System.out.println("--------------------------------");
-
-                } catch (FileNotFoundException e) {
-                    System.err.println("Файл не найден: " + e.getMessage());
-                } catch (IOException e) {
-                    System.err.println("Ошибка ввода‑вывода при чтении файла: " + e.getMessage());
-                } catch (LongLineException e) {
-                    System.err.println("Ошибка: " + e.getMessage());
-                    break; // Прекращаем выполнение программы при обнаружении длинной строки
-                } catch (Exception e) {
-                    System.err.println("Неожиданная ошибка: ");
-                    e.printStackTrace();
-                }
-
-            } else {
-                if (isDirectory) {
-                    System.out.println("Указанный путь является путём к папке, а не к файлу!");
-                } else {
-                    System.out.println("Указанный файл не существует!");
-                }
+                UserAgent userAgent = entry.getUserAgent();
+                System.out.printf("  OS: %s, Браузер: %s, Размер: %d байт%n",
+                        userAgent.getOsType(),
+                        userAgent.getBrowserType(),
+                        entry.getDataSize());
+                System.out.println();
             }
+
+            // Выводим итоговую статистику
+            System.out.println("=== Итоговая статистика ===");
+            System.out.printf("Общее количество записей: %d%n", logEntries.size());
+            System.out.printf("Общий объём трафика: %d байт%n", stats.totalTraffic);
+
+            if (stats.minTime != null && stats.maxTime != null) {
+                System.out.printf("Период анализа: с %s до %s%n",
+                        stats.minTime.format(java.time.format.DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm")),
+                        stats.maxTime.format(java.time.format.DateTimeFormatter.ofPattern("dd/MMM/yyyy HH:mm")));
+
+                double trafficRate = stats.getTrafficRate();
+                System.out.printf("Средний трафик за час: %.2f байт/час%n", trafficRate);
+            } else {
+                System.out.println("Недостаточно данных для расчёта трафика.");
+            }
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("Ошибка при обработке лога: " + e.getMessage());
         }
     }
 }
