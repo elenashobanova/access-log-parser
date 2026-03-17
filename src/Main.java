@@ -5,6 +5,7 @@ import main.UserAgent;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,6 +68,28 @@ public class Main {
         } catch (IllegalArgumentException e) {
             System.err.println("Ошибка при обработке лога: " + e.getMessage());
         }
+        stats.addEntry("/home", 200, "Windows");
+        stats.addEntry("/about", 404, "Linux");      // код 404 — не добавляем в страницы
+        stats.addEntry("/contact", 200, "Windows");
+        stats.addEntry("/blog", 200, "Linux");
+        stats.addEntry("/home", 200, "MacOS");       // дубликат страницы — игнорируется
+        stats.addEntry("/products", 200, "Windows");
+        stats.addEntry("/services", 500, "Android"); // код 500 — не добавляем в страницы
+
+        // Получаем и выводим результаты
+        System.out.println("=== Список существующих страниц (код 200) ===");
+        List<String> pages = stats.getAllPages();
+        for (String page : pages) {
+            System.out.println("- " + page);
+        }
+
+        System.out.println("\n=== Статистика операционных систем ===");
+        Map<String, Double> osStats = stats.getOsStatistics();
+        for (Map.Entry<String, Double> entry : osStats.entrySet()) {
+            String os = entry.getKey();
+            double share = entry.getValue();
+            System.out.printf("- %s: %.2f (%d%%)\n",
+                    os, share, (int) (share * 100));
+        }
     }
 }
-
